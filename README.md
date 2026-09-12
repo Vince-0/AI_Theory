@@ -8,8 +8,8 @@ Concepts build in order below. Figures use one toy prompt throughout: **The cat 
 
 | Adventure | What it exercises from this primer |
 |-----------|-------------------------------------|
-| [AdventuresInAICoding3](https://github.com/Vince-0/AdventuresInAICoding3) | Inference on **fitted** GGUFs; MTP speed (decode path) |
-| [AdventuresInAICoding4 - FreeToken](https://github.com/Vince-0/AdventuresInAICoding4) | MoE **expert pool** vs VRAM; KV ↔ cache tradeoffs; serve + agents |
+| [AdventuresInAICoding3 - MTP](https://github.com/Vince-0/AdventuresInAICoding3) | Multi-Token-Prediction speed from a GGUFF |
+| [AdventuresInAICoding4 - FreeToken](https://github.com/Vince-0/AdventuresInAICoding4) | Run a bigger model with Mixture-of-Experts |
 
 ---
 
@@ -45,8 +45,6 @@ Read top to bottom — each idea builds on the ones above. Where there is a work
 | **Loss / error** | That “how wrong were you?” number used only in training. |
 | **Detokenize** | Turn chosen token IDs back into readable words. |
 
-### Running models on your PC
-
 These ideas show up constantly in local LLM adventures ([#3](https://github.com/Vince-0/AdventuresInAICoding3), [#4](https://github.com/Vince-0/AdventuresInAICoding4)).
 
 | Term | ELI5 |
@@ -55,13 +53,13 @@ These ideas show up constantly in local LLM adventures ([#3](https://github.com/
 | **Parameters (e.g. 4B, 8B)** | How many of those weights there are — **B** means **billions**. Bigger often means smarter *and* hungrier for memory. |
 | **Quantization** | Store weights with fewer bits so the file and memory use shrink (trade a bit of quality/speed nuance for fit). |
 | **Bit depth** | How many bits each weight uses after quantization (e.g. **4-bit** is a common sweet spot; **8-bit** is closer to full quality). |
-| **GGUF** | **GPT-Generated Unified Format** — a common packed model file used by **llama.cpp** (and friends). See [Adventures #3](https://github.com/Vince-0/AdventuresInAICoding3). |
+| **GGUF** | **GPT-Generated Unified Format** — a common packed model file used by **llama.cpp** (and friends). |
 | **VRAM** | **Video RAM** — fast memory on the **GPU** (**graphics processing unit**). Dense models usually need weights + **KV cache** to fit here. |
 | **Context size** | How many tokens of prompt + reply you can keep in play at once. Bigger context → more **KV cache** memory. |
 | **tok/s** | **Tokens per second** — how fast the server generates (or reads) tokens; the usual speed score for local chat. |
 | **Inference server** | The program that loads the model and answers requests (e.g. **llama.cpp** server, **vLLM**, **FreeToken** `ft serve`). |
-| **Agent harness** | Software that drives the server through multi-step tool use (e.g. **Hermes**, **OpenCode**) — see [#3](https://github.com/Vince-0/AdventuresInAICoding3) / [#4](https://github.com/Vince-0/AdventuresInAICoding4). |
-| **MTP** | **Multi-token prediction** — draft several tokens per step (speculative decoding) to speed generation on fitted models; worked example in [Adventures #3](https://github.com/Vince-0/AdventuresInAICoding3). |
+| **Agent harness** | Software that drives the server through multi-step tool use (e.g. **Hermes**, **OpenCode**) |
+| **MTP** | **Multi-token prediction** — draft several tokens per step (speculative decoding) to speed generation on fitted models; |
 | **Flash Attention** | A faster way to run the attention math on supported **GPUs** — same idea, less waste. |
 
 ---
