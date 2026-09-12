@@ -15,7 +15,7 @@ Concepts build in order below. Figures use one toy prompt throughout: **The cat 
 
 ## Key Concepts
 
-Read top to bottom — each idea builds on the ones above. Where there is a worked example, the term links to that walkthrough step.
+Read top to bottom — each idea builds on the ones above. Where there is a worked example, the term links to that walkthrough step (or to an adventure).
 
 | Term | ELI5 |
 |------|------|
@@ -26,16 +26,16 @@ Read top to bottom — each idea builds on the ones above. Where there is a work
 | **Dimension value** | The decimal sitting in that slot — a learned amount, not a score you can read as “32% cat.” |
 | **[Layer](#walk-layer)** | One full pass of the same recipe over the token rows: share context, then update each row. Deep models just **repeat** that recipe many times. |
 | **[Transformer](#walk-transformer)** | The overall design: embed tokens into rows, run many **layers**, then guess the next token. |
-| **Transformer layer** | One copy of that layer recipe (attention, then MLP or MoE). |
+| **Transformer layer** | One copy of that layer recipe: **attention**, then an **MLP** (**multi-layer perceptron**) / **FFN** (**feed-forward network**) or **MoE**. |
 | **[Attention](#walk-attention)** | Let tokens “look at” each other so the latest one can borrow useful context from earlier ones. |
-| **Query / Key / Value** | The three internal notebooks attention uses to decide *who* to look at and *what* to copy. |
-| **[KV cache](#walk-attention)** | Saved Key/Value notes from tokens already seen, so generation doesn’t redo the whole prompt every time. Longer text → bigger cache. |
-| **MLP / FFN** | After attention, a small network that rewrites **each** token’s row on its own (no looking at neighbors). |
-| **Dense model** | Every token always uses that **same** one MLP path. |
-| **[MoE](#walk-moe)** | Instead of one MLP, keep many specialist MLPs (**experts**); only a few run for this token. |
-| **Expert** | One specialist MLP in that MoE bank. |
-| **Router (gating)** | The chooser that picks which few experts get to run. |
-| **Expert pool** | **All** the experts’ weights — still take space even when most are idle. |
+| **Query / Key / Value (Q, K, V)** | The three internal notebooks attention uses to decide *who* to look at (**query** vs **keys**) and *what* to copy (**values**). |
+| **[KV cache](#walk-attention)** | **Key–Value cache** — saved **key** and **value** notes from tokens already seen, so generation doesn’t redo the whole prompt every time. Longer text → bigger cache. |
+| **MLP / FFN** | **Multi-layer perceptron** / **feed-forward network** — after attention, a small network that rewrites **each** token’s row on its own (no looking at neighbors). |
+| **Dense model** | Every token always uses that **same** one **MLP** / **FFN** path. |
+| **[MoE](#walk-moe)** | **Mixture of Experts** — instead of one **MLP**, keep many specialist **MLPs** (**experts**); only a few run for this token. |
+| **Expert** | One specialist **MLP** / **FFN** in that **MoE** (**Mixture of Experts**) bank. |
+| **Router (gating)** | The chooser that picks which few **experts** get to run. |
+| **Expert pool** | **All** the experts’ **weights** — still take space even when most are idle. |
 | **Sparse compute** | Only the chosen experts do work this step; the others sit out. |
 | **[Logits](#walk-predict)** | Raw “how much do I like each possible next token?” scores (not chances yet). |
 | **[Probability / chance](#walk-predict)** | Those scores turned into shares from 0 to 1 that add up to about 1 (e.g. `mat` ~31%). |
@@ -44,6 +44,25 @@ Read top to bottom — each idea builds on the ones above. Where there is a work
 | **[Training](#walk-train)** | Compare the model’s chances to the **real** next token, measure the miss, then adjust weights. |
 | **Loss / error** | That “how wrong were you?” number used only in training. |
 | **Detokenize** | Turn chosen token IDs back into readable words. |
+
+### Running models on your PC
+
+These ideas show up constantly in local LLM adventures ([#3](https://github.com/Vince-0/AdventuresInAICoding3), [#4](https://github.com/Vince-0/AdventuresInAICoding4)).
+
+| Term | ELI5 |
+|------|------|
+| **Weights** | The huge set of learned numbers inside the model (what training adjusts). |
+| **Parameters (e.g. 4B, 8B)** | How many of those weights there are — **B** means **billions**. Bigger often means smarter *and* hungrier for memory. |
+| **Quantization** | Store weights with fewer bits so the file and memory use shrink (trade a bit of quality/speed nuance for fit). |
+| **Bit depth** | How many bits each weight uses after quantization (e.g. **4-bit** is a common sweet spot; **8-bit** is closer to full quality). |
+| **GGUF** | **GPT-Generated Unified Format** — a common packed model file used by **llama.cpp** (and friends). See [Adventures #3](https://github.com/Vince-0/AdventuresInAICoding3). |
+| **VRAM** | **Video RAM** — fast memory on the **GPU** (**graphics processing unit**). Dense models usually need weights + **KV cache** to fit here. |
+| **Context size** | How many tokens of prompt + reply you can keep in play at once. Bigger context → more **KV cache** memory. |
+| **tok/s** | **Tokens per second** — how fast the server generates (or reads) tokens; the usual speed score for local chat. |
+| **Inference server** | The program that loads the model and answers requests (e.g. **llama.cpp** server, **vLLM**, **FreeToken** `ft serve`). |
+| **Agent harness** | Software that drives the server through multi-step tool use (e.g. **Hermes**, **OpenCode**) — see [#3](https://github.com/Vince-0/AdventuresInAICoding3) / [#4](https://github.com/Vince-0/AdventuresInAICoding4). |
+| **MTP** | **Multi-token prediction** — draft several tokens per step (speculative decoding) to speed generation on fitted models; worked example in [Adventures #3](https://github.com/Vince-0/AdventuresInAICoding3). |
+| **Flash Attention** | A faster way to run the attention math on supported **GPUs** — same idea, less waste. |
 
 ---
 
