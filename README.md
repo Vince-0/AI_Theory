@@ -111,7 +111,7 @@ flowchart TD
 
 Watch one example move through the pipeline (spotlight stages + data card). Toy numbers for teaching - not a real model run.
 
-![LLM pipeline](animations/llm_pipeline/out/llm_pipeline.gif)
+![LLM pipeline](animations/llm_pipeline.gif)
 
 ### 0. Raw input
 

@@ -1,4 +1,4 @@
-# Generated animation intermediates (committed GIF lives under out/)
-animations/**/frames/
+# Build/source for GIF - keep only animations/llm_pipeline.gif in git
+animations/llm_pipeline/
 *.pyc
 __pycache__/
