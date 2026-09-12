@@ -13,6 +13,63 @@ Concepts build in order below. Figures use one toy prompt throughout: **The cat 
 
 ---
 
+## Chat, agents, and invisible stage directions
+
+**ELI5:** The model blurts plausible next words; chat templates and agent harnesses dress those blurts up as a conversation and stuff in invisible stage directions so it stays in character and can use tools.
+
+### The raw model
+
+At heart an LLM is a **next-token guesser**.
+Given text so far, it asks: “what token is likely next?”
+It is **not** a little person with goals, memory of “this chat,” or a built-in duty to be helpful. Training taught it statistical patterns in lots of text - including dialogue - so conversation-*shaped* output is common, but that isn’t the same as “logic engine” or “honest assistant.”
+
+### The costume: chat / instruct formatting
+
+Products wrap that guesser in a **script**:
+
+- A fixed **system** message (“you are a helpful assistant…”)
+- **User** / **assistant** turn markers
+- Often **safety** and style rules
+
+Those aren’t “thoughts.” They’re **extra tokens prepended or structured around your message** so the model’s next-token guesses sound like a polite chat partner. That’s the main “meta infrastructure” that makes it **mimic** conversation.
+
+Instruction-tuned / RLHF’d models were further trained to prefer replies that look helpful and on-policy - still next-token prediction, with a stronger bias toward assistant-like behavior.
+
+### What you see vs what the model sees
+
+```text
+You type:          "Why is my code slow?"
+
+Model often gets:  [system rules]
+                   [tool instructions]
+                   [earlier summarized history]
+                   [your message]
+                   [maybe "use tools like this…"]
+```
+
+You only see your line and the reply. The **agent harness** (Hermes, OpenCode, Cursor, etc.) quietly adds:
+
+- Who the assistant is supposed to be
+- What tools exist and how to call them
+- Scratchpads / plans / memory snippets
+- Format rules (“reply with JSON”, “don’t invent files”)
+
+So a lot of “why is it acting logical / careful / agentic?” is **steering text + loops**, not the base model suddenly understanding debate.
+
+### Agent harness in one picture
+
+| Piece | Job |
+|--------|-----|
+| **LLM** | Propose next tokens (text or “call this tool”) |
+| **Harness** | Build the hidden prompt, parse tool calls, run tools, append results, ask again |
+| **You** | See a tidy conversation |
+
+Multi-step “thinking” is often: harness runs a **loop** - model suggests a step → tool runs → result stuffed back into context → model continues - until the harness stops.
+
+That’s why the same weights can feel chatty in a chatbot, coding-agent-ish in OpenCode, and different again with another system prompt - the **invisible wrapper** changed more than the “brain.”
+
+---
+
 ## Key Concepts
 
 Read top to bottom — each idea builds on the ones above. Where there is a worked example, the term links to that walkthrough step (or to an adventure).
