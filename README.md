@@ -111,9 +111,7 @@ flowchart TD
 
 Watch one example move through the pipeline (spotlight stages + data card). Toy numbers for teaching - not a real model run.
 
-![LLM pipeline spotlight](animations/llm_pipeline/out/llm_pipeline.gif)
-
-Regenerate: `cd animations/llm_pipeline && ./render.sh` (needs Pillow + ffmpeg). Mermaid diagrams above are the static map of the same flow.
+![LLM pipeline](animations/llm_pipeline/out/llm_pipeline.gif)
 
 ### 0. Raw input
 

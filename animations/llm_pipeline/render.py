@@ -224,7 +224,7 @@ def render_frame(beat: Beat) -> Image.Image:
     caption_f = font(14, bold=True)
 
     # Centered headers
-    draw_centered(draw, 14, "AI Theory - LLM pipeline (spotlight)", TEXT, title_f)
+    draw_centered(draw, 14, "AI Theory - LLM pipeline", TEXT, title_f)
     draw_centered(
         draw,
         42,
