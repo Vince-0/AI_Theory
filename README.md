@@ -46,56 +46,83 @@ Concepts build in order below. Figures use one toy prompt throughout: **The cat 
 
 ## Map of the journey
 
-Use these charts for orientation. Worked examples and figures live in the [Walkthrough](#walkthrough).
+**One decode step** is the overview. **Full flow** is the same pipeline **zoomed in** (especially inside the transformer and the serve/train fork). Step names match on purpose. Abbreviated toy data uses the prompt **The cat sat on the**. Figures in the [Walkthrough](#walkthrough) show the same operations in more detail.
 
 ### One decode step
 
 ```mermaid
 flowchart TD
-  prompt["Prompt text"] --> tok["Tokens + IDs"]
-  tok --> emb["Embedding: each ID becomes a vector row"]
+  s0["0. Raw input
+The cat sat on the"]
+  s1["1. Tokenization
+cat → id 3797"]
+  s2["2. Embedding
+3797 → vector row d0, d1, …"]
+  s3["3. Transformer layer x N
+Attention + KV, then MLP or MoE
+vector row in → vector row out"]
+  s4["4. Predict next-token chances
+mat ~31%, floor ~18%, …"]
+  serve["Serve
+append mat → … the mat
+loop again"]
+  train["Train
+predicted chances vs true mat
+→ loss → update weights"]
 
-  subgraph oneLayer ["One transformer layer inside stack x N"]
-    direction TB
-    attn["Attention + KV"]
-    ffn["MLP or MoE experts"]
-    attn --> ffn
-  end
-
-  emb --> attn
-  ffn --> pred["Next-token chances over vocabulary"]
-  pred --> out["Decode: pick one token / output"]
-  pred --> trainPath["Train only: vs true token then loss"]
+  s0 --> s1 --> s2 --> s3 --> s4
+  s4 --> serve
+  s4 --> train
 ```
 
 ### Full flow
 
+Same steps as above — zoom into step 3 and the serve/train branch.
+
 ```mermaid
 flowchart TD
-  inputText["Input text"] --> tokenize["1. Tokenize to IDs"]
-  tokenize --> embed["2. Embed IDs to vector rows"]
+  s0["0. Raw input
+The cat sat on the"]
+  s1["1. Tokenization
+The|cat|sat|on|the
+→ 15496, 3797, 3290, 319, 262"]
+  s2["2. Embedding
+id 3797 → row
+d0=+0.05, d1=+0.22, d2=-0.17, …"]
 
-  subgraph transformerStack ["Transformer stack: repeat layer 1..N"]
+  subgraph s3 ["3. Transformer stack: layer x N"]
     direction TB
-    attention["3a. Attention + KV"]
-    denseOrMoe{"3b. Dense MLP or MoE?"}
-    denseMlp["One shared FFN"]
-    moePath["Router + few experts run"]
-    nextHidden["Updated vector rows"]
-    moreLayers{"More layers?"}
+    s3a["3a. Attention + KV
+last token looks left
+KV cache grows with length"]
+    s3b{"3b. Feed-forward: Dense or MoE?"}
+    dense["Dense: one shared MLP
+vector → updated vector"]
+    moe["MoE: router picks experts
+e.g. E1+E3 run; pool stays in RAM"]
+    updated["Updated vector rows"]
+    more{"More layers?"}
 
-    attention --> denseOrMoe
-    denseOrMoe -->|dense| denseMlp --> nextHidden
-    denseOrMoe -->|MoE| moePath --> nextHidden
-    nextHidden --> moreLayers
-    moreLayers -->|"yes"| attention
+    s3a --> s3b
+    s3b -->|dense| dense --> updated
+    s3b -->|MoE| moe --> updated
+    updated --> more
+    more -->|"yes: next layer"| s3a
   end
 
-  embed --> attention
-  moreLayers -->|"no"| lmHead["4. Chances over next tokens"]
-  lmHead --> branch{"Serve or train?"}
-  branch -->|serve| pickToken["Pick token, append, loop"]
-  branch -->|train| loss["Compare to true token → loss → update"]
+  s4["4. Predict next-token chances
+mat ~31% · floor ~18% · rug ~11% · …"]
+  serve["Serve
+pick mat, append, loop
+no loss"]
+  train["Train
+chances vs true next token mat
+→ loss → update weights"]
+
+  s0 --> s1 --> s2 --> s3a
+  more -->|"no: stack done"| s4
+  s4 --> serve
+  s4 --> train
 ```
 
 ---
