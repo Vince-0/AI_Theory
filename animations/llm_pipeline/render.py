@@ -28,6 +28,7 @@ ACCENT = (90, 200, 180)
 WARN = (220, 170, 90)
 CARD_BG = (24, 30, 40)
 BORDER = (60, 72, 90)
+GROUP = (70, 90, 110)
 
 STAGES = [
     "Input",
@@ -40,6 +41,13 @@ STAGES = [
     "Train",
 ]
 
+# Visual category brackets over chips: (label, start_index, end_index inclusive)
+CATEGORIES = [
+    ("Tokenize", 0, 2),
+    ("Transformer", 3, 4),
+    ("Predict", 5, 7),
+]
+
 FONT_DIR = Path("/usr/share/fonts/truetype/dejavu")
 
 
@@ -48,12 +56,31 @@ def font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont:
     return ImageFont.truetype(str(FONT_DIR / name), size)
 
 
+def text_size(draw: ImageDraw.ImageDraw, text: str, fnt: ImageFont.ImageFont) -> tuple[int, int]:
+    bbox = draw.textbbox((0, 0), text, font=fnt)
+    return bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+
+def draw_centered(
+    draw: ImageDraw.ImageDraw,
+    y: float,
+    text: str,
+    fill,
+    fnt: ImageFont.ImageFont,
+    x0: float = 0,
+    x1: float = W,
+) -> None:
+    tw, _ = text_size(draw, text, fnt)
+    draw.text((x0 + (x1 - x0 - tw) / 2, y), text, fill=fill, font=fnt)
+
+
 @dataclass
 class Beat:
     stage_index: int
     hold_s: float
     title: str
     lines: list[str]
+    caption: str
     note: str = ""
 
 
@@ -63,6 +90,8 @@ BEATS: list[Beat] = [
         8.0,
         "0. Raw input",
         ['"The cat sat on the"', "", "A short prompt enters the model."],
+        "Tokenize path: raw text before IDs and vectors",
+        "Start of the pipeline.",
     ),
     Beat(
         1,
@@ -74,6 +103,7 @@ BEATS: list[Beat] = [
             "IDs (illustrative):",
             "[15496, 3797, 3290, 319, 262]",
         ],
+        "Tokenize: split text into tokens and IDs",
         "Text becomes token IDs the model knows.",
     ),
     Beat(
@@ -87,6 +117,7 @@ BEATS: list[Beat] = [
             " 3797 -> [ 0.05,  0.22, -0.17, ... ]",
             "   ...",
         ],
+        "Tokenize: IDs become vectors for the stack",
         "Numbers, not words, flow through the net.",
     ),
     Beat(
@@ -100,6 +131,7 @@ BEATS: list[Beat] = [
             "do not recompute the whole prompt",
             "on every new token.",
         ],
+        "Inside transformer layer (stack repeats x N layers)",
         "Longer context -> more KV memory (often VRAM).",
     ),
     Beat(
@@ -113,7 +145,8 @@ BEATS: list[Beat] = [
             "Full expert pool still exists in RAM",
             "even while only a few run.",
         ],
-        "Step 3 is the transformer stack (repeat x N).",
+        "Inside transformer layer: feed-forward is MoE",
+        "Sparse compute; full expert pool still stored.",
     ),
     Beat(
         5,
@@ -127,6 +160,7 @@ BEATS: list[Beat] = [
             "  rug   0.11",
             "  ...",
         ],
+        "Predict: turn last hidden state into vocab probs",
         "Distribution over what comes next.",
     ),
     Beat(
@@ -142,6 +176,7 @@ BEATS: list[Beat] = [
             "Loop: feed back into the stack",
             "until stop. No loss step.",
         ],
+        "Predict / serve: choose a token and continue",
         "What FreeToken / llama.cpp / chat do.",
     ),
     Beat(
@@ -155,6 +190,7 @@ BEATS: list[Beat] = [
             "Compare -> loss / error",
             "Backprop -> update weights",
         ],
+        "Predict / train: compare to true next token",
         "Train only. Serve path skips this.",
     ),
 ]
@@ -164,99 +200,134 @@ def draw_rounded_rect(draw: ImageDraw.ImageDraw, xy, fill, outline=None, radius=
     draw.rounded_rectangle(xy, radius=radius, fill=fill, outline=outline, width=width)
 
 
+def chip_geometry(margin: int, gap: int) -> tuple[int, list[tuple[float, float]]]:
+    n = len(STAGES)
+    total_gap = gap * (n - 1)
+    chip_w = (W - 2 * margin - total_gap) // n
+    xs: list[tuple[float, float]] = []
+    x = float(margin)
+    for _ in range(n):
+        xs.append((x, x + chip_w))
+        x += chip_w + gap
+    return chip_w, xs
+
+
 def render_frame(beat: Beat) -> Image.Image:
     img = Image.new("RGB", (W, H), BG)
     draw = ImageDraw.Draw(img)
     title_f = font(22, bold=True)
     body_f = font(16)
     small_f = font(13)
-    chip_f = font(12, bold=True)
+    chip_f = font(11, bold=True)
+    group_f = font(12, bold=True)
     note_f = font(14)
+    caption_f = font(14, bold=True)
 
-    draw.text((28, 18), "AI Theory - LLM pipeline (spotlight)", fill=TEXT, font=title_f)
-    draw.text(
-        (28, 48),
+    # Centered headers
+    draw_centered(draw, 14, "AI Theory - LLM pipeline (spotlight)", TEXT, title_f)
+    draw_centered(
+        draw,
+        42,
         "Example follows one prompt through tokenize -> transformer -> predict",
-        fill=MUTED,
-        font=small_f,
+        MUTED,
+        small_f,
     )
 
-    chip_y = 78
-    chip_h = 36
-    gap = 8
     margin = 28
-    n = len(STAGES)
-    total_gap = gap * (n - 1)
-    chip_w = (W - 2 * margin - total_gap) // n
-    x = margin
-    for i, label in enumerate(STAGES):
-        if i == beat.stage_index:
-            fill = CHIP_ACTIVE
-            outline = ACCENT
-        elif i < beat.stage_index:
-            fill = CHIP_DONE
-            outline = BORDER
-        else:
-            fill = CHIP
-            outline = BORDER
-        draw_rounded_rect(
+    gap = 8
+    chip_h = 34
+    chip_y = 88
+    chip_w, chip_xs = chip_geometry(margin, gap)
+
+    # Category brackets above chips
+    bracket_y = 68
+    for label, i0, i1 in CATEGORIES:
+        x0 = chip_xs[i0][0]
+        x1 = chip_xs[i1][1]
+        # bracket line
+        mid_y = bracket_y + 6
+        draw.line((x0 + 4, mid_y, x1 - 4, mid_y), fill=GROUP, width=2)
+        draw.line((x0 + 4, mid_y, x0 + 4, mid_y + 6), fill=GROUP, width=2)
+        draw.line((x1 - 4, mid_y, x1 - 4, mid_y + 6), fill=GROUP, width=2)
+        # label centered in group
+        active_group = i0 <= beat.stage_index <= i1
+        draw_centered(
             draw,
-            (x, chip_y, x + chip_w, chip_y + chip_h),
-            fill=fill,
-            outline=outline,
-            radius=8,
-            width=2,
+            bracket_y - 12,
+            label,
+            ACCENT if active_group else MUTED,
+            group_f,
+            x0,
+            x1,
         )
-        bbox = draw.textbbox((0, 0), label, font=chip_f)
-        tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+
+    # Stage chips
+    for i, label in enumerate(STAGES):
+        x0, x1 = chip_xs[i]
+        if i == beat.stage_index:
+            fill, outline = CHIP_ACTIVE, ACCENT
+        elif i < beat.stage_index:
+            fill, outline = CHIP_DONE, BORDER
+        else:
+            fill, outline = CHIP, BORDER
+        draw_rounded_rect(draw, (x0, chip_y, x1, chip_y + chip_h), fill=fill, outline=outline, radius=8, width=2)
+        tw, th = text_size(draw, label, chip_f)
         draw.text(
-            (x + (chip_w - tw) / 2, chip_y + (chip_h - th) / 2 - 1),
+            (x0 + (x1 - x0 - tw) / 2, chip_y + (chip_h - th) / 2 - 1),
             label,
             fill=TEXT,
             font=chip_f,
         )
-        if i < n - 1:
-            ax0 = x + chip_w + 1
-            ax1 = x + chip_w + gap - 1
+        if i < len(STAGES) - 1:
+            ax0 = x1 + 1
+            ax1 = chip_xs[i + 1][0] - 1
             mid = chip_y + chip_h // 2
             draw.line((ax0, mid, ax1, mid), fill=BORDER, width=2)
-        x += chip_w + gap
 
-    if beat.stage_index in (3, 4):
-        draw.text(
-            (margin, 122),
-            "Inside transformer layer (stack repeats x N layers)",
-            fill=ACCENT,
-            font=small_f,
-        )
+    # Centered per-step caption (same place as former transformer-only line)
+    caption_y = 130
+    draw_centered(draw, caption_y, beat.caption, ACCENT, caption_f)
 
-    card = (margin, 148, W - margin, H - 70)
+    # Data card with centered body
+    card_top = 158
+    card_bottom = H - 70
+    card = (margin, card_top, W - margin, card_bottom)
     draw_rounded_rect(draw, card, fill=CARD_BG, outline=BORDER, radius=14, width=2)
-    draw.text((margin + 24, 164), beat.title, fill=ACCENT, font=title_f)
 
-    y = 204
-    for line in beat.lines:
-        draw.text((margin + 24, y), line, fill=TEXT if line else MUTED, font=body_f)
-        y += 26
+    # Centered title + lines as a block in the upper/mid card
+    content_lines = [beat.title, ""] + beat.lines
+    line_h = 26
+    block_h = line_h * len(content_lines)
+    # leave room for note strip
+    note_reserved = 48 if beat.note else 16
+    avail_top = card_top + 20
+    avail_bottom = card_bottom - note_reserved - 8
+    start_y = avail_top + max(0, (avail_bottom - avail_top - block_h) / 2)
+
+    y = start_y
+    for i, line in enumerate(content_lines):
+        if i == 0:
+            draw_centered(draw, y, line, ACCENT, title_f, margin, W - margin)
+        elif line:
+            draw_centered(draw, y, line, TEXT, body_f, margin, W - margin)
+        y += line_h
 
     if beat.note:
-        draw_rounded_rect(
-            draw,
-            (margin + 20, H - 120, W - margin - 20, H - 82),
-            fill=PANEL,
-            outline=BORDER,
-            radius=8,
-            width=1,
+        note_box = (margin + 20, card_bottom - 44, W - margin - 20, card_bottom - 10)
+        draw_rounded_rect(draw, note_box, fill=PANEL, outline=BORDER, radius=8, width=1)
+        tw, th = text_size(draw, beat.note, note_f)
+        nx0, ny0, nx1, ny1 = note_box
+        draw.text(
+            (nx0 + (nx1 - nx0 - tw) / 2, ny0 + (ny1 - ny0 - th) / 2 - 1),
+            beat.note,
+            fill=WARN,
+            font=note_f,
         )
-        draw.text((margin + 32, H - 112), beat.note, fill=WARN, font=note_f)
 
     step = beat.stage_index + 1
-    draw.text(
-        (margin, H - 42),
-        f"Beat {step}/{len(STAGES)}  ·  toy numbers for teaching, not a real model run",
-        fill=MUTED,
-        font=small_f,
-    )
+    footer = f"Step {step}/{len(STAGES)}  ·  toy numbers for teaching, not a real model run"
+    draw_centered(draw, H - 42, footer, MUTED, small_f)
+
     bar_x0, bar_x1 = margin, W - margin
     bar_y = H - 22
     draw.rectangle((bar_x0, bar_y, bar_x1, bar_y + 6), fill=CHIP)
