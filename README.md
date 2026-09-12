@@ -52,23 +52,13 @@ Concepts build in order below. Figures use one toy prompt throughout: **The cat 
 
 ```mermaid
 flowchart TD
-  s0["0. Raw input
-The cat sat on the"]
-  s1["1. Tokenization
-cat → id 3797"]
-  s2["2. Embedding
-3797 → vector row d0, d1, …"]
-  s3["3. Transformer layer x N
-Attention + KV, then MLP or MoE
-vector row in → vector row out"]
-  s4["4. Predict next-token chances
-mat ~31%, floor ~18%, …"]
-  serve["Serve
-append mat → … the mat
-loop again"]
-  train["Train
-predicted chances vs true mat
-→ loss → update weights"]
+  s0["0. Raw input<br/>The cat sat on the"]
+  s1["1. Tokenization<br/>cat → id 3797"]
+  s2["2. Embedding<br/>3797 → vector row"]
+  s3["3. Transformer x N<br/>Attn+KV then MLP/MoE"]
+  s4["4. Predict chances<br/>mat ~31%, floor ~18%"]
+  serve["Serve<br/>append mat, loop"]
+  train["Train<br/>vs true mat → loss"]
 
   s0 --> s1 --> s2 --> s3 --> s4
   s4 --> serve
@@ -81,46 +71,34 @@ Same steps as above — zoom into step 3 and the serve/train branch.
 
 ```mermaid
 flowchart TD
-  s0["0. Raw input
-The cat sat on the"]
-  s1["1. Tokenization
-The|cat|sat|on|the
-→ 15496, 3797, 3290, 319, 262"]
-  s2["2. Embedding
-id 3797 → row
-d0=+0.05, d1=+0.22, d2=-0.17, …"]
+  s0["0. Raw input<br/>The cat sat on the"]
+  s1["1. Tokenization<br/>tokens → IDs"]
+  s2["2. Embedding<br/>ID → vector row"]
 
-  subgraph s3 ["3. Transformer stack: layer x N"]
+  subgraph s3 ["3. Transformer stack x N"]
     direction TB
-    s3a["3a. Attention + KV
-last token looks left
-KV cache grows with length"]
-    s3b{"3b. Feed-forward: Dense or MoE?"}
-    dense["Dense: one shared MLP
-vector → updated vector"]
-    moe["MoE: router picks experts
-e.g. E1+E3 run; pool stays in RAM"]
-    updated["Updated vector rows"]
-    more{"More layers?"}
+    s3a["3a. Attention + KV<br/>look left; KV grows"]
+    s3b["3b. Dense or MoE?"]
+    dense["Dense MLP<br/>one shared path"]
+    moe["MoE<br/>few experts run"]
+    updated["Updated vectors"]
+    more["More layers?"]
 
     s3a --> s3b
-    s3b -->|dense| dense --> updated
-    s3b -->|MoE| moe --> updated
+    s3b --> dense
+    s3b --> moe
+    dense --> updated
+    moe --> updated
     updated --> more
-    more -->|"yes: next layer"| s3a
+    more -->|"yes"| s3a
   end
 
-  s4["4. Predict next-token chances
-mat ~31% · floor ~18% · rug ~11% · …"]
-  serve["Serve
-pick mat, append, loop
-no loss"]
-  train["Train
-chances vs true next token mat
-→ loss → update weights"]
+  s4["4. Predict chances<br/>mat ~31%"]
+  serve["Serve<br/>append, loop"]
+  train["Train<br/>loss → update"]
 
   s0 --> s1 --> s2 --> s3a
-  more -->|"no: stack done"| s4
+  more -->|"no"| s4
   s4 --> serve
   s4 --> train
 ```
@@ -152,6 +130,10 @@ An **embedding** table turns each ID into a **vector**: one row of numbers. Each
 After this step, the prompt is a **sequence of vectors** (one row per token), ready for the transformer stack.
 
 ![2. Embedding](animations/figures/step_02_embedding.png)
+
+Those rows sit one under another for the whole prompt. Attention’s job (next) is to let positions share information **across** that stack.
+
+![2b. Sequence of vector rows](animations/figures/step_02b_sequence_rows.png)
 
 ### Transformer
 
