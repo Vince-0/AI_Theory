@@ -39,12 +39,12 @@ Primer for how local LLMs work: tokenization, transformers, attention / KV, dens
 ## One decode step
 
 ```mermaid
-flowchart LR
+flowchart TD
   prompt["Prompt text"] --> tok["Tokens"]
   tok --> emb["Embeddings"]
 
   subgraph oneLayer ["One transformer layer inside stack x N"]
-    direction LR
+    direction TB
     attn["Attention + KV"]
     ffn["MLP or MoE experts"]
     attn --> ffn
