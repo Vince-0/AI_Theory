@@ -15,32 +15,35 @@ Concepts build in order below. Figures use one toy prompt throughout: **The cat 
 
 ## Key Concepts
 
-| Term | Brief explanation |
-|------|-------------------|
-| **Token / tokenization** | Text split into pieces the model knows (often subwords), each mapped to an integer **token ID** |
-| **Embedding** | Lookup that turns each token ID into a **vector** (starting **hidden state** for that token) |
-| **Vector / hidden state** | One row of numbers for one token — slots `d0`, `d1`, … up to the model’s hidden size |
-| **Dimension (`d0`, `d1`, …)** | A numbered **variable (slot)** in that row |
-| **Dimension value** | The decimal in a slot — a **learned value**, not a human-readable score like “32% cat” |
-| **Transformer** | Architecture: embed → stack of **transformer layers** → predict next token |
-| **Transformer layer** | One repeat of attention + feed-forward (dense MLP or MoE); models stack many layers |
-| **Attention** | Lets each position mix information from other tokens (“what context matters?”) |
-| **Query / Key / Value** | Internal attention projections; **KV cache** stores past Keys and Values so generation need not recompute the whole prompt every step |
-| **KV cache** | Stored Keys/Values from prior tokens during generation; longer context → more memory (often VRAM) |
-| **MLP / FFN** | Feed-forward network after attention — transforms each token’s vector on its own |
-| **Dense model** | One shared MLP/FFN per layer for every token |
-| **MoE** | Mixture of Experts — only a few **experts** run per token; the **full expert pool** still needs storage |
-| **Expert** | One MLP/FFN in an MoE bank; **router** picks a few per token |
-| **Router (gating)** | Small network that scores experts and selects top-k |
-| **Expert pool** | All expert weights across MoE layers — full storage footprint even when few run |
-| **Sparse compute** | Only selected experts execute for this token; the rest stay idle |
-| **Logits** | Raw scores over the vocabulary for “what token comes next?” (before turning into chances) |
-| **Probability / chance** | After softmax, each vocab token gets a chance from 0 to 1; chances across the vocab sum to about 1 |
-| **Decoding** | Choosing one next token from that distribution (e.g. highest chance, or sampling) |
-| **Inference (serve)** | Forward-only generation — no ground-truth token, no loss step |
-| **Training** | Compare prediction to the **true** next token → **loss** → update weights |
-| **Loss / error** | Training-only measure of how wrong the predicted chances were vs the actual next token |
-| **Detokenize** | Map generated token IDs back to readable text |
+Read top to bottom — each idea builds on the ones above. Where there is a worked example, the term links to that walkthrough step.
+
+| Term | ELI5 |
+|------|------|
+| **[Token / tokenization](#walk-tokenize)** | Chop the sentence into little pieces the model knows, and give each piece a number (**token ID**). |
+| **[Embedding](#walk-embed)** | Look up that number in a big table and get a row of other numbers for that piece. |
+| **Vector / hidden state** | That row of numbers — the model’s working description of one token. See [Embedding](#walk-embed) and [stacked rows](#walk-sequence). |
+| **Dimension (`d0`, `d1`, …)** | One labeled slot in the row (like column 0, column 1, …). |
+| **Dimension value** | The decimal sitting in that slot — a learned amount, not a score you can read as “32% cat.” |
+| **[Layer](#walk-layer)** | One full pass of the same recipe over the token rows: share context, then update each row. Deep models just **repeat** that recipe many times. |
+| **[Transformer](#walk-transformer)** | The overall design: embed tokens into rows, run many **layers**, then guess the next token. |
+| **Transformer layer** | One copy of that layer recipe (attention, then MLP or MoE). |
+| **[Attention](#walk-attention)** | Let tokens “look at” each other so the latest one can borrow useful context from earlier ones. |
+| **Query / Key / Value** | The three internal notebooks attention uses to decide *who* to look at and *what* to copy. |
+| **[KV cache](#walk-attention)** | Saved Key/Value notes from tokens already seen, so generation doesn’t redo the whole prompt every time. Longer text → bigger cache. |
+| **MLP / FFN** | After attention, a small network that rewrites **each** token’s row on its own (no looking at neighbors). |
+| **Dense model** | Every token always uses that **same** one MLP path. |
+| **[MoE](#walk-moe)** | Instead of one MLP, keep many specialist MLPs (**experts**); only a few run for this token. |
+| **Expert** | One specialist MLP in that MoE bank. |
+| **Router (gating)** | The chooser that picks which few experts get to run. |
+| **Expert pool** | **All** the experts’ weights — still take space even when most are idle. |
+| **Sparse compute** | Only the chosen experts do work this step; the others sit out. |
+| **[Logits](#walk-predict)** | Raw “how much do I like each possible next token?” scores (not chances yet). |
+| **[Probability / chance](#walk-predict)** | Those scores turned into shares from 0 to 1 that add up to about 1 (e.g. `mat` ~31%). |
+| **Decoding** | Pick one next token from those chances (often the top one, or a weighted random draw). |
+| **[Inference / serve](#walk-serve)** | Run the forward path to generate text — no teacher answer, no grade, no weight update. |
+| **[Training](#walk-train)** | Compare the model’s chances to the **real** next token, measure the miss, then adjust weights. |
+| **Loss / error** | That “how wrong were you?” number used only in training. |
+| **Detokenize** | Turn chosen token IDs back into readable words. |
 
 ---
 
@@ -111,18 +114,21 @@ Category order: **Tokenize** → **Transformer** → **Predict**. Each step has 
 
 ### Tokenize
 
+<a id="walk-raw"></a>
 #### 0. Raw input
 
 The model does not start with “understanding.” It starts with characters in a string. Everything later is a transformation of this input (and, when generating, of tokens already produced).
 
 ![0. Raw input](animations/figures/step_00_raw_input.png)
 
+<a id="walk-tokenize"></a>
 #### 1. Tokenization
 
 A **tokenizer** cuts the string into **tokens** (often subwords) and maps each piece to a **token ID** from a fixed vocabulary. Later stages almost never see raw letters — they see IDs.
 
 ![1. Tokenization](animations/figures/step_01_tokenization.png)
 
+<a id="walk-embed"></a>
 #### 2. Embedding
 
 An **embedding** table turns each ID into a **vector**: one row of numbers. Each column heading (`d0`, `d1`, …) is a **variable (slot)**. The decimal in a cell is that variable’s **learned value** for this token — useful to the network, not a readable label like “animal-ness.”
@@ -131,14 +137,20 @@ After this step, the prompt is a **sequence of vectors** (one row per token), re
 
 ![2. Embedding](animations/figures/step_02_embedding.png)
 
+<a id="walk-sequence"></a>
 Those rows sit one under another for the whole prompt. Attention’s job (next) is to let positions share information **across** that stack.
 
 ![2b. Sequence of vector rows](animations/figures/step_02b_sequence_rows.png)
 
+<a id="walk-transformer"></a>
+<a id="walk-layer"></a>
 ### Transformer
 
-**Step 3 is the transformer**: the same layer recipe repeats many times. Inside each layer you typically get attention, then a feed-forward block (dense MLP **or** MoE).
+A **layer** is one pass of a fixed recipe over the token rows: **attention** (share context), then a **feed-forward** block (**dense MLP** or **MoE**) that updates each row. A transformer stacks that same layer recipe many times — more layers means more repeats, not a totally different machine each time.
 
+**Step 3 is that stack.** The figures below zoom into what happens *inside* one layer.
+
+<a id="walk-attention"></a>
 #### 3a. Attention + KV cache
 
 **Attention** lets positions share information — especially so the latest position can pull context from earlier ones (“what matters for predicting the next token?”).
@@ -147,6 +159,7 @@ During generation, **Keys** and **Values** from past tokens are stored in a **KV
 
 ![3a. Attention + KV](animations/figures/step_03a_attention_kv.png)
 
+<a id="walk-moe"></a>
 #### 3b. MoE (Mixture of Experts)
 
 In a **dense** layer, every token runs through one shared feed-forward network. In **MoE**, that slot is a bank of **expert** networks. A **router** selects a few experts for this token (**sparse compute**). The **expert pool** — all experts’ weights — still has to live somewhere (often host RAM), even when most experts are idle for a given step.
@@ -155,12 +168,14 @@ In a **dense** layer, every token runs through one shared feed-forward network. 
 
 ### Predict
 
+<a id="walk-predict"></a>
 #### 4. Next-token chances
 
 A final **lm_head** turns the last position’s vector into **logits** (raw scores) over every vocabulary token, then usually **softmax** into **chances** (probabilities) that sum to about 1. **Decoding** picks one token — e.g. the highest chance, or a random sample weighted by chance.
 
 ![4. Predict](animations/figures/step_04_predict.png)
 
+<a id="walk-serve"></a>
 #### Serve (inference)
 
 In serving (chat, FreeToken, llama.cpp, agents), the chosen token is appended and the loop runs again until a stop condition. There is no “correct answer” signal and **no loss / weight update** on this path.
@@ -169,6 +184,7 @@ Worked example: [Adventures #4 - Agent harness](https://github.com/Vince-0/Adven
 
 ![5. Serve](animations/figures/step_05_serve.png)
 
+<a id="walk-train"></a>
 #### Train
 
 Training uses examples with a known next token. The model’s predicted **chances** are compared to that **true** token; the mismatch is **loss**, and backpropagation updates weights so future predictions improve. Serve skips this fork.
