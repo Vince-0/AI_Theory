@@ -60,13 +60,13 @@ class Beat:
 BEATS: list[Beat] = [
     Beat(
         0,
-        2.0,
+        8.0,
         "0. Raw input",
         ['"The cat sat on the"', "", "A short prompt enters the model."],
     ),
     Beat(
         1,
-        2.4,
+        8.0,
         "1. Tokenization",
         [
             "The | cat | sat | on | the",
@@ -78,7 +78,7 @@ BEATS: list[Beat] = [
     ),
     Beat(
         2,
-        2.2,
+        8.0,
         "2. Embedding",
         [
             "Each ID -> vector (hidden state)",
@@ -91,7 +91,7 @@ BEATS: list[Beat] = [
     ),
     Beat(
         3,
-        2.6,
+        8.0,
         "3a. Attention + KV cache",
         [
             "Last position looks left across the sequence.",
@@ -104,7 +104,7 @@ BEATS: list[Beat] = [
     ),
     Beat(
         4,
-        2.8,
+        8.0,
         "3b. MoE (inside a transformer layer)",
         [
             "Router picks top experts for this token:",
@@ -117,7 +117,7 @@ BEATS: list[Beat] = [
     ),
     Beat(
         5,
-        2.4,
+        8.0,
         "4. LM head -> next-token probs",
         [
             "Logits -> softmax over vocabulary",
@@ -131,7 +131,7 @@ BEATS: list[Beat] = [
     ),
     Beat(
         6,
-        2.6,
+        8.0,
         "Branch A - Inference (serve)",
         [
             "Pick token: mat",
@@ -146,7 +146,7 @@ BEATS: list[Beat] = [
     ),
     Beat(
         7,
-        2.6,
+        8.0,
         "Branch B - Training",
         [
             "Predicted: distribution over vocab",
