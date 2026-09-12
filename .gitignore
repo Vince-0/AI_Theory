@@ -1,4 +1,4 @@
-# Build/source for GIF - keep only animations/llm_pipeline.gif in git
+# Local figure build tooling (not committed)
 animations/llm_pipeline/
 *.pyc
 __pycache__/
