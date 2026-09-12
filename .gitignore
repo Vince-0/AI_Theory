@@ -1,0 +1,4 @@
+# Generated animation intermediates (committed GIF lives under out/)
+animations/**/frames/
+*.pyc
+__pycache__/

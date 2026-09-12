@@ -37,6 +37,12 @@ This repo is meant to grow as new projects get researched. Adventure write-ups s
 
 ## Serial story
 
+Watch one example move through the pipeline (spotlight stages + data card). Toy numbers for teaching - not a real model run.
+
+![LLM pipeline spotlight](animations/llm_pipeline/out/llm_pipeline.gif)
+
+Regenerate: `cd animations/llm_pipeline && ./render.sh` (needs Pillow + ffmpeg). Mermaid diagrams below are the static map of the same flow.
+
 ### 0. Raw input
 
 Example: `The cat sat on the`
@@ -108,7 +114,7 @@ Worked example: [Adventures #4 - Context ↔ MoE cache](https://github.com/Vince
 
 ## Mermaid - full flow (train vs serve)
 
-Attention, KV, and dense MLP / MoE live **inside** each transformer layer; that layer block repeats N times. Tokenize/embed are before the stack; LM head and train/serve branch are after.
+Static reference for the same story as the GIF. Attention, KV, and dense MLP / MoE live **inside** each transformer layer; that layer block repeats N times. Tokenize/embed are before the stack; LM head and train/serve branch are after.
 
 ```mermaid
 flowchart TD
