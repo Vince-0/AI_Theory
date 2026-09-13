@@ -123,34 +123,15 @@ These ideas show up constantly in local LLM adventures ([#3](https://github.com/
 
 ## Map of the journey
 
-**One decode step** is the overview. **Full flow** is the same pipeline **zoomed in** (especially inside the transformer and the serve/train fork). Step names match on purpose. Abbreviated toy data uses the prompt **The cat sat on the**. Figures in the [Walkthrough](#walkthrough) show the same operations in more detail.
+One flowchart for a **decode step**: raw text through the transformer, then the **serve** vs **train** fork. Abbreviated toy data uses the prompt **The cat sat on the**. Figures in the [Walkthrough](#walkthrough) show the same operations in more detail.
 
-### One decode step
+### Full flow
 
 ```mermaid
 flowchart TD
   s0["0. Raw input<br/>The cat sat on the"]
   s1["1. Tokenization<br/>cat -> id 3797"]
   s2["2. Embedding<br/>3797 -> vector row"]
-  s3["3. Transformer x N<br/>Attn+KV then MLP/MoE"]
-  s4["4. Predict chances<br/>mat ~31%, floor ~18%"]
-  serve["Serve<br/>append mat, loop"]
-  train["Train<br/>vs true mat -> loss"]
-
-  s0 --> s1 --> s2 --> s3 --> s4
-  s4 --> serve
-  s4 --> train
-```
-
-### Full flow
-
-Same steps as above - zoom into step 3 and the serve/train branch.
-
-```mermaid
-flowchart TD
-  s0["0. Raw input<br/>The cat sat on the"]
-  s1["1. Tokenization<br/>tokens -> IDs"]
-  s2["2. Embedding<br/>ID -> vector row"]
 
   subgraph s3 ["3. Transformer stack x N"]
     direction TB
@@ -170,9 +151,9 @@ flowchart TD
     more -->|"yes"| s3a
   end
 
-  s4["4. Predict chances<br/>mat ~31%"]
-  serve["Serve<br/>append, loop"]
-  train["Train<br/>loss -> update"]
+  s4["4. Predict chances<br/>mat ~31%, floor ~18%"]
+  serve["Serve<br/>append mat, loop"]
+  train["Train<br/>vs true mat -> loss"]
 
   s0 --> s1 --> s2 --> s3a
   more -->|"no"| s4
